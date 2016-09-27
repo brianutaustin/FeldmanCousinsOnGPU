@@ -9,7 +9,7 @@
 #define Ndmsq   1000
 #define Nssq2th 1000
 #define Ngrid   Ndmsq*Nssq2th
-#define Nfexp   1000
+#define Nfexp   500
 
 #define Bkgd    100
 
