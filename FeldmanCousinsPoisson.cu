@@ -1,20 +1,21 @@
 #include <iostream>
 #include <cmath>
-#include <algorthm>
+#include <algorithm>
 #include <fstream>
 
-#define N       10000
+#define N       100
 #define nrange  20
 #define bkgd    3
 #define CL      0.9
 
-__global__ void       kernel(double*, int*);
-__device__ double     poissonP(double, int);
-__device__ long long  factorial(int n);
+__global__ void   kernel(double*, int*, double*);
+__device__ double poissonP(double, int);
+__device__ double factorial(double n);
 
-__global__ void kernel(double* mu, int* ulim, int* llim) {
+__global__ void kernel(double* mu, int* n, double* R) {
   int thId = threadIdx.x;
   int blId = blockIdx.x;
+  int atId = threadIdx.x + blockIdx.x * gridDim.x;
 
   __shared__ double cacheR[nrange];
   __shared__ double cacheP[nrange];
@@ -23,11 +24,9 @@ __global__ void kernel(double* mu, int* ulim, int* llim) {
   cacheR[thId] = poissonP(mu[blId], thId)/poissonP(max(0, thId - bkgd), thId);
   cacheP[thId] = poissonP(mu[blId], thId);
   cacheI[thId] = thId;
-
   __syncthreads();
 
-  int ul = 0;
-  int il = 0;
+/*
   if (thId == 0) {
     for (int i = 0; i < nrange; i++) {
       double  rpRValTemp = cacheR[i];
@@ -50,75 +49,72 @@ __global__ void kernel(double* mu, int* ulim, int* llim) {
     }
 
     double  aggrP = 0;
-    int     count = 0
+    int     count = 0;
     while (aggrP < CL) {
       aggrP += cacheP[count];
       count ++;
     }
-    
+
     for (int i = 0; i < count + 1; i++) {
       if (cacheI[i] > ul) ul = cacheI[i];
-      if (cacheI[i] < il) il = cacheI[i];
+      if (cacheI[i] < ll) ll = cacheI[i];
     }
   }
-
-  ulim[blId] = ul;
-  ilim[blId] = il;
+*/
+  llim[blId] = thId;
 }
 
 __device__ double poissonP(double mu, int n) {
-  return pow(mu + bkgd, n)*exp(-(mu + bkgd))/factorial(n);
+  return pow(mu + 3., n)*exp(-(mu + 3.))/factorial((double)n);
 }
 
-__device__ long long factorial(n) {
-  long long fn = 1;
+__device__ double factorial(double n) {
+  double fn = 1.;
   if (n == 0) {
-    return 1;
+    return 1.;
   } else {
     for (int i = 1; i < n + 1; i++) {
-      fn *= i;
+      fn *= (double)i;
     }
   }
-  
   return fn;
 }
 
 int main() {
-  
+
   double* mu    = new double[N];
-  int*    ulim  = new int[N];
-  int*    llim  = new int[N];
-  
+  double* R     = new double[N*nrange];
+  int*    n     = new int[N*nrange];
+
   double* dev_mu;
-  double* dev_ulim;
-  double* dev_llim;
+  double* R;
+  int*    dev_n;
 
   cudaMalloc((void**)&dev_mu,   N*sizeof(double));
-  cudaMalloc((void**)&dev_ulim, N*sizeof(int));
-  cudaMalloc((void**)&dev_llim, N*sizeof(int));
+  cudaMalloc((void**)&dev_R,    N*nrange*sizeof(double));
+  cudaMalloc((void**)&dev_n,    N*nrange*sizeof(int));
 
   double muMax = 10;
   double muMin = 0;
-  double step  = (muMax - muMin)/N; 
+  double step  = (muMax - muMin)/N;
   for (int i = 0; i < N+1; i++) {
     mu[i] = muMin + i * step;
   }
 
   cudaMemcpy(dev_mu, mu, N*sizeof(double), cudaMemcpyHostToDevice);
 
-  kernel<<<N,nrange>>>(dev_mu, dev_ulim, dev_llim);
+  kernel<<<N+1,nrange>>>(dev_mu, dev_n,  dev_R);
 
-  cudaMemcpy(ulim, dev_ulim, N*sizeof(int), cudaMemcpyDeviceToHost);
-  cudaMemcpy(llim, dev_llim, N*sizeof(int), cudaMemcpyDeviceToHost);
-
-  // Output chisq to file
+  cudaMemcpy(R, dev_R, N*nrange*sizeof(int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(n, dev_n, N*sizeof(int),        cudaMemcpyDeviceToHost);
+/*
   std::ofstream ofs;
   ofs.open ("ul.dat", std::ofstream::out | std::ofstream::app);
-  for (int i = 0; i < Ndmsq; i++) {
+  for (int i = 0; i < N+1; i++) {
     ofs << mu[i] << "\t\t" << llim[i] << "\t\t" << ulim[i] << std::endl;
   }
   ofs.close();
-
+*/
   cudaFree(dev_mu);
   cudaFree(dev_ulim);
   cudaFree(dev_llim);
