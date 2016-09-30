@@ -47,9 +47,18 @@ __global__ void kernel(double* mu, int* n, double* P) {
       cacheI[maxIdxTemp] = rpIValTemp;
     }
   }
+  __syncthreads();
 
   n[atId] = cacheI[thId];
-  P[atId] = cacheP[thId];
+  sumPTemp = 0;
+  for (int i = 0; i < thId; i++) {
+    sumPTemp += cacheP[thId];
+  }
+  if (sumPTemp <= CL) {
+    P[atId] = 1;
+  } else {
+    P[atId] = 0;
+  }
 }
 
 __device__ double poissonP(double mu, double n) {
