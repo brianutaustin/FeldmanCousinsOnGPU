@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <fstream>
 
-#define N       100
+#define N       10000
 #define nrange  20
 #define bkgd    3
 #define CL      0.9
