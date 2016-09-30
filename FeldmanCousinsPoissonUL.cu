@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <fstream>
 
-#define N       100
+#define N       10000
 #define nrange  20
 #define bkgd    3
 #define CL      0.9
@@ -31,7 +31,7 @@ __global__ void kernel(double* mu, int* n, double* P) {
       double  rpRValTemp = cacheR[i];
       double  rpPValTemp = cacheP[i];
       int     rpIValTemp = cacheI[i];
-      double  maxValTemp = i;
+      double  maxValTemp = cacheR[i];
       int     maxIdxTemp = i;
       for (int j = i + 1; j < nrange; j++) {
         if (cacheR[j] > maxValTemp) {
