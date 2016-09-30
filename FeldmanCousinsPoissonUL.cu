@@ -31,7 +31,7 @@ __global__ void kernel(double* mu, int* n, double* P) {
       double  rpRValTemp = cacheR[i];
       double  rpPValTemp = cacheP[i];
       int     rpIValTemp = cacheI[i];
-      double  maxValTemp = i;
+      double  maxValTemp = cacheR[i];
       int     maxIdxTemp = i;
       for (int j = i + 1; j < nrange; j++) {
         if (cacheR[j] > maxValTemp) {
@@ -106,5 +106,6 @@ int main() {
   cudaFree(dev_mu);
   cudaFree(dev_n);
   cudaFree(dev_P);
+
   return 0;
 }
