@@ -6,26 +6,33 @@
 #define N       10000
 #define nrange  20
 #define bkgd    3
+#define CL      0.9
 
 __global__ void       kernel(double*, int*);
 __device__ double     poissonP(double, int);
 __device__ long long  factorial(int n);
 
 __global__ void kernel(double* mu, int* ulim, int* llim) {
-  unsigned int thId = threadIdx.x;
-  unsigned int blId = blockIdx.x;
+  int thId = threadIdx.x;
+  int blId = blockIdx.x;
 
   __shared__ double cacheR[nrange];
   __shared__ double cacheP[nrange];
+  __shared__ int    cacheI[nrange];
 
   cacheR[thId] = poissonP(mu[blId], thId)/poissonP(max(0, thId - bkgd), thId);
   cacheP[thId] = poissonP(mu[blId], thId);
+  cacheI[thId] = thId;
+
   __syncthreads();
 
+  int ul = 0;
+  int il = 0;
   if (thId == 0) {
     for (int i = 0; i < nrange; i++) {
       double  rpRValTemp = cacheR[i];
       double  rpPValTemp = cacheP[i];
+      int     rpIValTemp = cacheI[i];
       double  maxValTemp = 0;
       int     maxIdxTemp = 0;
       for (int j = i + 1; j < nrange; j++) {
@@ -36,11 +43,27 @@ __global__ void kernel(double* mu, int* ulim, int* llim) {
       }
       cacheR[i] = cacheR[maxIdxTemp];
       cacheP[i] = cacheP[maxIdxTemp];
+      cacheI[i] = cacheI[maxIdxTemp];
       cacheR[maxIdxTemp] = rpRValTemp;
       cacheP[maxIdxTemp] = rpPValTemp;
+      cacheI[maxIdxTemp] = rpIValTemp;
+    }
+
+    double  aggrP = 0;
+    int     count = 0
+    while (aggrP < CL) {
+      aggrP += cacheP[count];
+      count ++;
+    }
+    
+    for (int i = 0; i < count + 1; i++) {
+      if (cacheI[i] > ul) ul = cacheI[i];
+      if (cacheI[i] < il) il = cacheI[i];
     }
   }
 
+  ulim[blId] = ul;
+  ilim[blId] = il;
 }
 
 __device__ double poissonP(double mu, int n) {
