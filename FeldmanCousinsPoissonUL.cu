@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <fstream>
 
-#define N       10000
+#define N       1000
 #define nrange  20
 #define bkgd    3
 #define CL      0.9
@@ -50,9 +50,9 @@ __global__ void kernel(double* mu, int* n, double* P) {
   __syncthreads();
 
   n[atId] = cacheI[thId];
-  sumPTemp = 0;
+  double sumPTemp = 0.;
   for (int i = 0; i < thId; i++) {
-    sumPTemp += cacheP[thId];
+    sumPTemp += cacheP[i];
   }
   if (sumPTemp <= CL) {
     P[atId] = 1;
